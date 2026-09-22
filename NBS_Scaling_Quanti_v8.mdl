@@ -1,0 +1,1929 @@
+{UTF-8}
+********************************************************
+	.Neighbourhoods
+********************************************************~
+		One model for every city. Cities differ only in their parameter values; the
+		structure is the same everywhere. Within a city, two neighbourhood types
+		capture the difference that matters most for justice.
+	|
+
+Neighbourhood:
+	Deprived, Other
+	~
+	~	Two neighbourhood types within one city. Deprived: the most socioeconomically \
+		deprived areas, for example the most deprived quintile of small areas. Other: \
+		the rest of the city. Every city uses the same two elements; what differs \
+		between cities is the parameter values attached to them.
+	|
+
+City:
+	Generic, Cork, Klagenfurt, Lahti, Malta
+	~
+	~	One structure, five cities; they do not interact. Generic is the \
+		illustrative mid-size city of v4 to v5.1 and reproduces v5.1 exactly. The \
+		four pilots of the proposal: Cork (Ireland), Klagenfurt (Austria), Lahti \
+		(the Paijat-Hame pilot), Malta (the national conurbation). Only the \
+		parameters in the City Profile groups differ between cities; every other \
+		parameter is shared. New in v6.
+	|
+
+********************************************************
+	.Stocks
+********************************************************~
+		Four accumulations. Functioning NBS is kept separately for each
+		neighbourhood type, in hectares of green cover. Capability and support are
+		citywide 0-1 indices, as in v3. Residents displaced is the one new stock.
+	|
+
+Functioning NBS[City, Neighbourhood]=
+	INTEG (
+	NBS Implementation[City, Neighbourhood]-Loss of Functionality[City, Neighbourhood],
+		MIN ( Initial NBS Cover[City, Neighbourhood] * Land Area[City, Neighbourhood],
+		 Maximum Feasible NBS[City, Neighbourhood] ) )
+	~	ha [0,?]
+	~	STOCK 1. Green infrastructure delivered and kept up by the city's NBS \
+		programme that is actually functioning: street trees, parks, green roofs, \
+		rain gardens, bioswales, wetlands. Measured as hectares of green cover, the \
+		quantity satellite land-cover data such as Copernicus report, so that every \
+		city can be initialised from the same source. Installed NBS is not the same \
+		as functioning NBS.
+	|
+
+Municipal NBS Capability[City]=
+	INTEG (
+	Capability Building[City]-Capability Erosion[City],
+		Initial Municipal NBS Capability)
+	~	Dmnl [0,1]
+	~	STOCK 2. Organisational ability to plan, procure, implement, coordinate, \
+		monitor and maintain NBS, as a fraction of best practice. Unchanged from v3.
+	|
+
+Public and Political Support for NBS[City]=
+	INTEG (
+	Support Building[City]-Support Erosion[City],
+		Initial Public and Political Support)
+	~	Dmnl [0,1]
+	~	STOCK 3. Societal and political support, 0 to 1. Unchanged from v3.
+	|
+
+Residents Displaced by Green Gentrification[City]=
+	INTEG (
+	Green Gentrification Displacement[City],
+		0)
+	~	person [0,?]
+	~	STOCK 4. Cumulative number of original residents of deprived neighbourhoods \
+		pushed out because greening raised rents and property values. The concrete \
+		unintended consequence of targeting NBS at the areas that need it most.
+	|
+
+********************************************************
+	.Flows
+********************************************************~
+		Inflows and outflows of the four stocks.
+	|
+
+NBS Implementation[City, Neighbourhood]=
+	Remaining Feasible NBS Opportunity[City, Neighbourhood] * MIN (
+		 Resources for NBS Delivery[City] * Share of Resources to Rollout[City] * Share of New NBS[Neighbourhood]
+		 / Delivery Cost per Hectare[City] * NBS Implementation and Design Quality[City],
+		 Maximum Feasible NBS[City, Neighbourhood] / Minimum Delivery Time )
+	~	ha/Year
+	~	Budget buys hectares of functioning green cover. The rollout budget is split \
+		between neighbourhoods by the targeting lever and discounted by delivery \
+		quality, which is what capability buys. Two limits then apply: the room \
+		left in each neighbourhood, and how fast that room can physically be \
+		filled. The second never binds in the default city; it stops a small \
+		neighbourhood with a large budget being filled faster than projects can \
+		be delivered.
+	|
+
+Loss of Functionality[City, Neighbourhood]=
+	Functioning NBS[City, Neighbourhood] / Base NBS Lifetime * Decay Multiplier[City]
+	~	ha/Year
+	~	Degradation of the installed base, as in v3. Assets wear out over their \
+		base lifetime, faster when delivery quality is poor.
+	|
+
+Capability Building[City]=
+	( 1 - Municipal NBS Capability[City] ) * MIN ( Maximum Improvement Absorption,
+		 XIDZ ( Capability Improvement Effort[City], Reference Capability Investment[City], 0 ) )
+		 / Capability Build Time
+	~	Dmnl/Year
+	~	v6: XIDZ, because a city with no NBS budget now has no reference investment \
+		either, and 0 divided by 0 is defined here as no capability building. \
+		Learning, training, coordination routines and process improvement. \
+		Unchanged from v3.
+	|
+
+Capability Erosion[City]=
+	Municipal NBS Capability[City] * Staff and Knowledge Loss
+	~	Dmnl/Year
+	~	Decay of skills and routines with staff turnover. Unchanged from v3.
+	|
+
+Support Building[City]=
+	( 1 - Public and Political Support for NBS[City] ) * Realized NBS Performance[City]
+		 / Support Adjustment Time
+	~	Dmnl/Year
+	~	Support builds toward what delivered performance warrants. Unchanged from v3.
+	|
+
+Support Erosion[City]=
+	Public and Political Support for NBS[City] * ( Baseline Support Decay
+		 + Harm Sensitivity * Unintended Social Ecological and Economic Consequences[City] )
+		 / Support Adjustment Time
+	~	Dmnl/Year
+	~	Erosion from salient adverse effects, now including displacement, plus a \
+		baseline fade. Unchanged in form from v3.
+	|
+
+Green Gentrification Displacement[City]=
+	( Population[City, Deprived] - Residents Displaced by Green Gentrification[City] )
+		 * Displacement Sensitivity to Greening
+		 * NBS Implementation[City, Deprived] / Land Area[City, Deprived]
+		 * ( 1 - Effective Displacement Safeguards )
+	~	person/Year
+	~	Original residents of deprived neighbourhoods displaced each year. \
+		Proportional to how many are still there, to how fast their neighbourhood \
+		is being greened (share of its land greened per year), and to the gap left \
+		by anti-displacement safeguards. Greening elsewhere in the city does not \
+		displace anyone here.
+	|
+
+********************************************************
+	.Delivery Engine
+********************************************************~
+		The v3 structure: capability sets quality, quality sets decay and harm,
+		the performance shortfall drives the split between rollout and capability.
+	|
+
+NBS Implementation and Design Quality[City]=
+	Minimum Quality + ( 1 - Minimum Quality ) * Municipal NBS Capability[City]
+	~	Dmnl
+	~	Quality embodied in what gets built and how well it is kept up, 0 to 1. \
+		Capability is its sole determinant, as in v3.
+	|
+
+Decay Multiplier[City]=
+	1 + Extra Decay at Zero Quality * ( 1 - NBS Implementation and Design Quality[City] )
+	~	Dmnl
+	~	How much faster the installed base wears out than at perfect delivery \
+		quality. Unchanged from v3.
+	|
+
+Total Functioning NBS[City]=
+	SUM ( Functioning NBS[City, Neighbourhood!] )
+	~	ha
+	~	Functioning NBS across the whole city.
+	|
+
+Maximum Feasible NBS[City, Neighbourhood]=
+	MIN ( Maximum NBS Cover[Neighbourhood], 1 - Background Green Cover[City, Neighbourhood] )
+		 * Land Area[City, Neighbourhood]
+	~	ha
+	~	Ceiling on programme NBS in each neighbourhood. The MIN keeps total green \
+		cover at or below 100 percent whatever values a city enters.
+	|
+
+Remaining Feasible NBS Opportunity[City, Neighbourhood]=
+	MAX ( 0, 1 - XIDZ ( Functioning NBS[City, Neighbourhood], Maximum Feasible NBS[City, Neighbourhood], 1 ) )
+	~	Dmnl
+	~	Fraction of each neighbourhood's feasible room not yet used. Produces \
+		saturation.
+	|
+
+Benefit per Hectare of NBS[City]=
+	1 / SUM ( Maximum Feasible NBS[City, Neighbourhood!] )
+	~	1/ha
+	~	Indexing constant, derived as in v3: performance reads as a fraction of the \
+		city's full feasible NBS potential.
+	|
+
+Unintended Social Ecological and Economic Consequences[City]=
+	Total Functioning NBS[City] * Benefit per Hectare of NBS[City] * Maximum Harm Fraction
+		 * ( 1 - NBS Implementation and Design Quality[City] )
+		 + Residents Displaced by Green Gentrification[City] / SUM ( Population[City, Neighbourhood!] )
+	~	Dmnl
+	~	Aggregate adverse burden. First term, as in v3: harm from poorly delivered \
+		NBS such as maladaptation, ecological disservices, public-space conflict \
+		and cost overruns, scaling with how much exists and how badly it was done. \
+		Second term, new: the share of the city's residents displaced by green \
+		gentrification, weighted one for one with lost benefit.
+	|
+
+Realized NBS Performance[City]=
+	MAX ( 0, Total Functioning NBS[City] * Benefit per Hectare of NBS[City]
+		 - Unintended Social Ecological and Economic Consequences[City] )
+	~	Dmnl
+	~	Gross benefit net of the adverse burden, 0 to 1 of full feasible potential. \
+		Drives support, the shortfall, and funding from other sectors.
+	|
+
+Desired NBS Performance[City]=
+	Ambition Scale * Public and Political Support for NBS[City]
+	~	Dmnl
+	~	The performance the city is aiming for. Unchanged from v3.
+	|
+
+NBS Performance Shortfall[City]=
+	MAX ( 0, Desired NBS Performance[City] - Realized NBS Performance[City] )
+	~	Dmnl
+	~	The single pressure signal driving both responses. Unchanged from v3.
+	|
+
+Rollout Pressure[City]=
+	NBS Performance Shortfall[City] / Reference Shortfall
+	~	Dmnl
+	~	Urgency to deliver more now. Unchanged from v3.
+	|
+
+Need for Capability Building[City]=
+	NBS Performance Shortfall[City] / ( NBS Performance Shortfall[City] + Reference Shortfall )
+	~	Dmnl
+	~	Recognised need to invest in skills and systems, 0 to 1, saturating while \
+		Rollout Pressure is not. Unchanged from v3.
+	|
+
+Share of Resources to Rollout[City]=
+	Maximum Rollout Share * XIDZ ( Rollout Pressure[City],
+		 Rollout Pressure[City] + Pressure at Half Share, 0 )
+	~	Dmnl
+	~	The allocation decision between delivery and capability. Unchanged from v3.
+	|
+
+Capability Improvement Effort[City]=
+	Resources for NBS Delivery[City] * ( 1 - Share of Resources to Rollout[City] )
+		 * Need for Capability Building[City]
+	~	kEUR/Year
+	~	Resources actually spent on improvement. Unchanged from v3.
+	|
+
+Share of New NBS[Deprived]=
+	Effective Share of New NBS in Deprived Areas ~~|
+Share of New NBS[Other]=
+	1 - Effective Share of New NBS in Deprived Areas
+	~	Dmnl
+	~	How the rollout budget is split between neighbourhood types. The arrow from \
+		the targeting lever is positive for Deprived and negative for Other: it \
+		divides a fixed budget.
+	|
+
+********************************************************
+	.Resources and Cross Sectoral Integration
+********************************************************~
+		Municipal budget plus what other sectors contribute.
+	|
+
+Total NBS Resources[City]=
+	Effective Municipal NBS Budget[City] + Funding from Other Sectors[City]
+	~	kEUR/Year
+	~	Budget, staff and managerial attention available for NBS, now the \
+		municipal NBS budget plus funding from other sectors. A constant in v3.
+	|
+
+Funding from Other Sectors[City]=
+	Effective Municipal NBS Budget[City] * Maximum Other Sector Funding Ratio
+		 * Effective Cross Sectoral Integration * Realized NBS Performance[City]
+	~	kEUR/Year
+	~	Water, health, transport and housing budgets co-funding NBS. Other sectors \
+		pay when two things hold: there is an institutional route for them to do so \
+		(integration) and NBS visibly delivers their objectives (performance). This \
+		closes a reinforcing loop: performance attracts funding, funding builds \
+		more NBS, more NBS raises performance.
+	|
+
+Share of NBS Resources from Other Sectors[City]=
+	XIDZ ( Funding from Other Sectors[City], Total NBS Resources[City], 0 )
+	~	Dmnl
+	~	INDICATOR, cross-sectoral policy integration. Share of all NBS resources \
+		coming from sectors other than the NBS programme itself.
+	|
+
+Nature Programme Spending[City]=
+	Total NBS Resources[City] * Effective Share of Resources to Nature Programmes
+	~	kEUR/Year
+	~	Resources spent on nature-based health programmes: green prescribing, guided \
+		walks, physical-activity programmes in parks. New in v5.
+	|
+
+Resources for NBS Delivery[City]=
+	Total NBS Resources[City] * ( 1 - Effective Share of Resources to Nature Programmes )
+	~	kEUR/Year
+	~	What is left to build NBS and build capability after programmes take their \
+		share. Equal to Total NBS Resources when no programmes are funded, which is \
+		why v5 reproduces v4 exactly by default. New in v5.
+	|
+
+Nature Programme Reach[City]=
+	MIN ( 1, Nature Programme Spending[City]
+		 / ( Programme Cost per Resident Reached * SUM ( Population[City, Neighbourhood!] ) ) )
+	~	Dmnl
+	~	Share of residents reached by nature programmes, 0 to 1. Spread evenly across \
+		the city. New in v5.
+	|
+
+********************************************************
+	.Indicators
+********************************************************~
+		Outcomes a city recognises, in the five domains of the proposal. Health
+		and climate indicators use simple, published-style exposure-response
+		relationships; every coefficient is a placeholder to be replaced with
+		values for the pilot cities.
+	|
+
+Green Area[City, Neighbourhood]=
+	Background Green Cover[City, Neighbourhood] * Land Area[City, Neighbourhood]
+		 + Functioning NBS[City, Neighbourhood]
+	~	ha
+	~	All green cover in the neighbourhood: what exists independently of the NBS \
+		programme (private gardens, woodland, natural areas) plus functioning \
+		programme NBS.
+	|
+
+Green Cover[City, Neighbourhood]=
+	Green Area[City, Neighbourhood] / Land Area[City, Neighbourhood]
+	~	Dmnl
+	~	INDICATOR, climate and ecosystem. Share of land under green cover, the \
+		quantity behind the 30 percent canopy benchmark of the 3-30-300 rule.
+	|
+
+City Green Cover[City]=
+	SUM ( Green Area[City, Neighbourhood!] ) / SUM ( Land Area[City, Neighbourhood!] )
+	~	Dmnl
+	~	INDICATOR, climate and ecosystem. Green cover across the whole city.
+	|
+
+Summer Cooling from Green Cover[City, Neighbourhood]=
+	Summer Cooling per Unit Green Cover * Green Cover[City, Neighbourhood]
+	~	degC
+	~	INDICATOR, climate and ecosystem. How much cooler average summer air \
+		temperature is than it would be with no green cover. Linear in cover, the \
+		simplest form consistent with European heat studies.
+	|
+
+Premature Deaths Avoided by Green Cover[City, Neighbourhood]=
+	Population[City, Neighbourhood] * Annual Death Rate[City]
+		 * ( Heat Mortality Reduction per Degree * Summer Cooling from Green Cover[City, Neighbourhood]
+		 + Mortality Reduction per Unit Green Cover * Green Cover[City, Neighbourhood] )
+	~	person/Year
+	~	INDICATOR, health. Deaths per year avoided compared with no green cover, \
+		through two routes: cooler summers, and the wider benefits of living in \
+		greener surroundings (physical activity, mental health, air quality). The \
+		two routes overlap somewhat in the evidence, so read the sum as an upper \
+		estimate.
+	|
+
+Green Cover Gap[City]=
+	Green Cover[City, Other] - Green Cover[City, Deprived]
+	~	Dmnl
+	~	INDICATOR, social and environmental justice. How much greener the rest of \
+		the city is than its deprived neighbourhoods, in cover share. Zero means \
+		parity.
+	|
+
+Progress to Green Cover Target[City]=
+	City Green Cover[City] / Green Cover Target
+	~	Dmnl
+	~	INDICATOR, transformative potential of existing policy. City green cover as \
+		a fraction of the city's target: 1 means the target is met.
+	|
+
+Baseline Nature Engagement[Generic, Neighbourhood]=
+	0.5, 0.6
+	~	Dmnl [0,1]
+	~	GENERIC CITY. CITY PROFILE. Share of residents with green space nearby who use it regularly \
+		without any programme. Varies by culture: the proposal notes 66 percent of \
+		Finnish adults exercise in parks against 20 percent of Maltese. New in v5. \
+		SOURCE (v5.1): value kept. White et al. 2019, Scientific Reports 9:7730 \
+		(England, n=19,806): 33.6 percent of adults spent 120 minutes or more in \
+		nature in the past week. Among residents who have green space close by, \
+		that is roughly one half; deprived groups visit less, hence 0.5 against 0.6. \
+		Set per pilot from WP4 survey data.
+	|
+
+Background Fine Particulates[Generic, Neighbourhood]=
+	10, 8
+	~	ugm3 [0,100]
+	~	GENERIC CITY. CITY PROFILE. Annual mean PM2.5 before new clean-air measures. New in v5. \
+		SOURCE (v5.1): value kept. Proposal Table 4, from the ISGlobal ranking of \
+		858 European cities: Paijat-Hame 5.8, Cork 7.2, Klagenfurt 13.4, Malta 17.5. \
+		The WHO 2021 air quality guideline is 5. Deprived areas set higher because \
+		they are more often near traffic and industry.
+	|
+
+Poor Mental Health Prevalence[Generic]=
+	0.1
+	~	Dmnl [0,0.5]
+	~	GENERIC CITY. CITY PROFILE. Share of adults with poor mental health, here the common \
+		mental disorders (depression and anxiety) that nature contact is linked to. \
+		New in v5. SOURCE (v5.1): 0.15 -> 0.1. OECD/EC Health at a Glance: Europe \
+		2018, from IHME estimates for 2016: anxiety disorders 5.4 percent and \
+		depressive disorders 4.5 percent of the EU population; any mental health \
+		problem, including substance use, 17.3 percent. Set per pilot from national \
+		data or WP6.
+	|
+
+Expected NBS Lifetime[City]=
+	Base NBS Lifetime / Decay Multiplier[City]
+	~	Year
+	~	INDICATOR, transformative potential of existing policy. How many years a 		hectare of NBS lasts under the city's current delivery quality. A policy 		that builds fast but short-lived NBS keeps the city on a replacement 		treadmill rather than transforming it.
+	|
+
+Green Space Access[City, Neighbourhood]=
+	Green Cover[City, Neighbourhood] / ( Green Cover[City, Neighbourhood] + Green Cover at Half Access[City] )
+	~	Dmnl
+	~	Share of residents with usable green space close to home, the 300 in the \
+		3-30-300 rule. Rises with green cover with diminishing returns. New in v5.
+	|
+
+Use of Green Space[City, Neighbourhood]=
+	Green Space Access[City, Neighbourhood] * ( Baseline Nature Engagement[City, Neighbourhood]
+		 + ( 1 - Baseline Nature Engagement[City, Neighbourhood] ) * Programme Effectiveness
+		 * Nature Programme Reach[City] )
+	~	Dmnl
+	~	INDICATOR, health. Share of residents who regularly spend time in green space, \
+		for example 120 minutes a week, including walking and cycling along greenways: \
+		the nature dose WP4 measures. Needs access; programmes convert some of those \
+		with access who would not otherwise go. New in v5.
+	|
+
+Poor Mental Health Cases Avoided[City, Neighbourhood]=
+	Population[City, Neighbourhood] * Use of Green Space[City, Neighbourhood]
+		 * Poor Mental Health Prevalence[City] * Mental Health Risk Reduction from Nature Use
+	~	person
+	~	INDICATOR, health. Residents who would otherwise have poor mental health, \
+		the primary outcome of the WP6 health impact assessment. New in v5.
+	|
+
+Fine Particulate Concentration[City, Neighbourhood]=
+	Background Fine Particulates[City, Neighbourhood]
+		 * ( 1 - Effective Clean Air Policy Emission Cut )
+		 * ( 1 - Particulate Removal per Unit Green Cover * Green Cover[City, Neighbourhood] )
+	~	ugm3
+	~	INDICATOR, climate and ecosystem. Annual mean PM2.5 in micrograms per cubic \
+		metre (WHO guideline 5). Set mostly by emissions policy; green cover removes \
+		only a little, which is itself worth showing decision makers. New in v5.
+	|
+
+Habitat Cover[City, Neighbourhood]=
+	Background Green Cover[City, Neighbourhood] * Background Habitat Value
+		 + Functioning NBS[City, Neighbourhood] / Land Area[City, Neighbourhood]
+		 * ( Minimum NBS Habitat Value + ( 1 - Minimum NBS Habitat Value )
+		 * NBS Implementation and Design Quality[City] )
+	~	Dmnl
+	~	INDICATOR, climate and ecosystem. Green cover weighted by its value as \
+		habitat. Well-designed NBS (native, diverse, connected planting) count for \
+		more, so municipal capability shows up in biodiversity. New in v5.
+	|
+
+********************************************************
+	.City Profile Generic
+********************************************************~
+		Parameters that describe a particular city. Default values describe an
+		illustrative mid-size European city of 150,000 people and are not data for
+		any real city: replace them with each pilot city's values.
+	|
+
+Land Area[Generic, Neighbourhood]=
+	600, 2400
+	~	ha [10,100000]
+	~	GENERIC CITY. CITY PROFILE. Land area of each neighbourhood type.
+	|
+
+Population[Generic, Neighbourhood]=
+	45000, 105000
+	~	person [100,10000000]
+	~	GENERIC CITY. CITY PROFILE. Residents of each neighbourhood type.
+	|
+
+Background Green Cover[Generic, Neighbourhood]=
+	0.06, 0.14
+	~	Dmnl [0,0.9]
+	~	GENERIC CITY. CITY PROFILE. Share of land under green cover that the NBS programme does \
+		not manage and that is held constant: private gardens, woodland, natural \
+		and agricultural land.
+	|
+
+Initial NBS Cover[Generic, Neighbourhood]=
+	0.04, 0.08
+	~	Dmnl [0,0.9]
+	~	GENERIC CITY. CITY PROFILE. Share of land under programme NBS at the start of the run: \
+		parks, street trees and other green infrastructure the city maintains.
+	|
+
+Maximum NBS Cover[Neighbourhood]=
+	0.2, 0.25
+	~	Dmnl [0.01,0.9]
+	~	CITY PROFILE. The most land programme NBS could ever cover, given space, \
+		buildings and competing uses. Low in dense historic cores.
+	|
+
+Municipal NBS Budget[Generic]=
+	14400
+	~	kEUR/Year [0,200000]
+	~	GENERIC CITY. CITY PROFILE. Annual resources the city itself devotes to NBS, in thousand \
+		euro, including staff time and managerial attention valued in money.
+	|
+
+Annual Death Rate[Generic]=
+	0.01
+	~	1/Year [0,0.03]
+	~	GENERIC CITY. CITY PROFILE. Deaths per resident per year, all causes.
+	|
+
+Green Cover Target=
+	0.3
+	~	Dmnl [0.01,1]
+	~	CITY PROFILE. The city's green cover target. 0.3 is the 30 percent of the \
+		3-30-300 rule.
+	|
+
+********************************************************
+	.Policy Levers
+********************************************************~
+		What a city decides. The first three are new in v4.
+	|
+
+Share of New NBS in Deprived Areas=
+	0.2
+	~	Dmnl [0,1]
+	~	LEVER. Share of the rollout budget spent in deprived neighbourhoods. 0.2 is \
+		roughly proportional to their land area in the default city.
+	|
+
+Displacement Safeguards=
+	0.2
+	~	Dmnl [0,1]
+	~	LEVER. Strength of anti-displacement measures that accompany greening: rent \
+		protection, social housing, community land trusts, just-green-enough \
+		design. 0 none, 1 fully protective.
+	|
+
+Cross Sectoral Integration=
+	0.2
+	~	Dmnl [0,1]
+	~	LEVER. Degree to which water, health, transport and housing departments \
+		co-plan and co-fund NBS through shared targets and budgets. 0 none, 1 fully \
+		integrated.
+	|
+
+Share of Resources to Nature Programmes=
+	0
+	~	Dmnl [0,0.5]
+	~	LEVER. Share of NBS resources spent getting people into green space rather \
+		than building or keeping it. 0 by default, which reproduces v4. New in v5.
+	|
+
+Clean Air Policy Emission Cut=
+	0
+	~	Dmnl [0,0.9]
+	~	LEVER. Fractional cut in PM2.5 from clean-air and transport policy, outside \
+		the NBS programme. New in v5.
+	|
+
+Maximum Rollout Share=
+	0.7
+	~	Dmnl [0,1]
+	~	LEVER. Cap on the share of resources that can be diverted to immediate \
+		rollout. Lower protects capability. From v3.
+	|
+
+Pressure at Half Share=
+	0.35
+	~	Dmnl [0.01,5]
+	~	LEVER. Rollout pressure at which the city has swung half way to its cap. \
+		From v3.
+	|
+
+Staff and Knowledge Loss=
+	0.05
+	~	1/Year [0,0.5]
+	~	CONTEXT. Fractional annual loss of skills, staff and institutional memory. \
+		From v3.
+	|
+
+Ambition Scale=
+	0.9
+	~	Dmnl [0,1]
+	~	CONTEXT. Performance the city aims for when support is at its maximum. \
+		From v3.
+	|
+
+********************************************************
+	.Policy Timing
+********************************************************~
+		When a decision takes effect. New in v8.
+
+		Before v8 a lever applied to the whole run, so changing one rewrote the city's
+		past as well as its future. Here every lever is weighted by Policy Active: the
+		city runs on its historical settings until Policy Start Year, then phases into
+		the lever setting. The stretch of the run that will be calibrated against
+		observed data is therefore fixed, whatever the levers say.
+
+		Set Policy Start Year to 2011 (one phase-in before INITIAL TIME) to put every
+		lever in force from the first time step, which is how v7 and earlier behaved,
+		and which is how the regression tests reproduce v7 exactly.
+	|
+
+Policy Start Year=
+	2027
+	~	Year [2011,2075]
+	~	LEVER. The year the policy settings take effect. 2027 by default: the first \
+		year after the stretch of history the model will be calibrated against. New \
+		in v8.
+	|
+
+Policy Phase In=
+	1
+	~	Year [0.25,10]
+	~	How long a decision takes to reach full effect. A policy does not switch on \
+		overnight, and a ramp also keeps the model free of a discontinuity. New in v8.
+	|
+
+Policy Active=
+	MIN ( 1, MAX ( 0, ( Time - Policy Start Year ) / Policy Phase In ) )
+	~	Dmnl
+	~	0 before the policy start year, 1 once the decision has phased in. Every \
+		lever is weighted by it. New in v8.
+	|
+
+Share of New NBS in Deprived Areas before Policy=
+	0.2
+	~	Dmnl [0,1]
+	~	How the city targeted its greening historically. Equal to the lever's default, \
+		so the default run is unchanged. New in v8.
+	|
+
+Displacement Safeguards before Policy=
+	0.2
+	~	Dmnl [0,1]
+	~	The safeguards the city had in place historically. Equal to the lever's \
+		default, so the default run is unchanged. New in v8.
+	|
+
+Cross Sectoral Integration before Policy=
+	0.2
+	~	Dmnl [0,1]
+	~	How far the city's departments co-planned historically. Equal to the lever's \
+		default, so the default run is unchanged. New in v8.
+	|
+
+Budget Change from Policy Start=
+	1
+	~	Dmnl [0,3]
+	~	LEVER. What the city decides to do to its NBS budget from the policy start \
+		year: 1 leaves it as it is, 1.5 raises it by half. A multiplier rather than a \
+		second budget, so each city's calibrated budget stays the one place its \
+		spending is recorded. New in v8.
+	|
+
+Effective Share of New NBS in Deprived Areas=
+	Share of New NBS in Deprived Areas before Policy
+		 + Policy Active * ( Share of New NBS in Deprived Areas
+		 - Share of New NBS in Deprived Areas before Policy )
+	~	Dmnl
+	~	The targeting actually in force: the historical value until the policy start \
+		year, the lever afterwards. New in v8.
+	|
+
+Effective Displacement Safeguards=
+	Displacement Safeguards before Policy
+		 + Policy Active * ( Displacement Safeguards - Displacement Safeguards before Policy )
+	~	Dmnl
+	~	The safeguards actually in force. New in v8.
+	|
+
+Effective Cross Sectoral Integration=
+	Cross Sectoral Integration before Policy
+		 + Policy Active * ( Cross Sectoral Integration - Cross Sectoral Integration before Policy )
+	~	Dmnl
+	~	The integration actually in force. New in v8.
+	|
+
+Effective Share of Resources to Nature Programmes=
+	Policy Active * Share of Resources to Nature Programmes
+	~	Dmnl
+	~	The programme share actually in force. There is no historical value to carry: \
+		whatever programmes a city already ran are inside its measured park use, so \
+		the lever is the change from that, and it is 0 before the policy starts. New \
+		in v8.
+	|
+
+Effective Clean Air Policy Emission Cut=
+	Policy Active * Clean Air Policy Emission Cut
+	~	Dmnl
+	~	The clean-air cut actually in force. The lever is a cut relative to measured \
+		PM2.5, which already contains whatever policy was in place, so it is 0 before \
+		the policy starts. New in v8.
+	|
+
+Effective Municipal NBS Budget[City]=
+	Municipal NBS Budget[City] * ( 1 + Policy Active * ( Budget Change from Policy Start - 1 ) )
+	~	kEUR/Year
+	~	The budget actually available: the city's calibrated budget until the policy \
+		start year, then changed by the lever. New in v8.
+	|
+
+********************************************************
+	.Evidence Parameters
+********************************************************~
+		Coefficients taken from the literature (v5.1). Each comment gives the \
+		source, the derivation and the range the evidence supports. Two remain \
+		assumptions, as the literature does not quantify them this way: \
+		Displacement Sensitivity to Greening and Maximum Other Sector Funding Ratio. \
+		Full references in NBS_Scaling_Quanti_v5.1_evidence.md.
+	|
+
+Summer Cooling per Unit Green Cover=
+	2
+	~	degC [0,10]
+	~	Summer air-temperature reduction per unit of green cover share: 2 means \
+		each 10 percentage points of cover cools by 0.2 degC. SOURCE (v5.1): 3 -> \
+		2. Iungman et al. 2023, The Lancet 401:577-589 (93 European cities, summer \
+		2015): raising tree cover from a population-weighted mean of 11 percent to \
+		30 percent cools cities by 0.4 degC on average, about 2 degC per unit of \
+		cover. Marando et al. 2022, Sustainable Cities and Society 77:103564 (601 \
+		European cities): at least 16 percent tree cover is needed for 1 degC of \
+		cooling, an upper bound near 6. Tree canopy cools more than grass, so NBS \
+		mixes with much lawn would sit below 2. Range supported: 1 to 6.
+	|
+
+Heat Mortality Reduction per Degree=
+	0.007
+	~	1/degC [0,0.05]
+	~	Fraction of annual deaths avoided per degree of summer cooling. SOURCE \
+		(v5.1): value kept, now derived. Iungman et al. 2023, The Lancet: a \
+		population-weighted urban heat island of 1.5 degC causes 4.33 percent \
+		(95 percent CI 3.37 to 5.28) of summer (June to August) deaths, 2.9 \
+		percent per degC. Summer is about 23 percent of annual deaths in the EU \
+		(Eurostat monthly deaths 2019), so 0.029 x 0.23 = 0.007. Their 30 percent \
+		tree-cover scenario (0.4 degC averts 1.84 percent of summer deaths) \
+		implies 0.011, because cooling lands where it is hottest. Range 0.005 \
+		to 0.011.
+	|
+
+Mortality Reduction per Unit Green Cover=
+	0.2
+	~	Dmnl [0,0.5]
+	~	Fraction of annual deaths avoided per unit of green cover share: 0.2 means \
+		10 percentage points of cover lowers mortality by 2 percent. SOURCE \
+		(v5.1): value kept, now derived. Rojas-Rueda et al. 2019, Lancet \
+		Planetary Health 3:e469-e477, meta-analysis of 9 cohorts, 8.3 million \
+		people: hazard ratio 0.96 (0.94 to 0.97) per 0.1 NDVI within 500 m of \
+		home. In the NDVI linear-mixture model (Gutman and Ignatov 1998), going \
+		from sealed to fully vegetated land raises NDVI by about 0.5 to 0.8, so a \
+		unit of green cover is 5 to 8 steps of 0.1 NDVI: 0.2 to 0.3. The lower \
+		value is used because this route overlaps with the heat route (part of \
+		the greenness association is cooling). Barboza et al. 2021, Lancet \
+		Planetary Health, used the same function for 978 European cities. Range \
+		0.12 to 0.32.
+	|
+
+Displacement Sensitivity to Greening=
+	0.5
+	~	Dmnl [0,3]
+	~	Share of remaining residents displaced per unit share of the \
+		neighbourhood's land greened, with no safeguards: 0.5 means greening 10 \
+		percent of the land displaces 5 percent of residents. ASSUMPTION, checked \
+		against the literature (v5.1): value kept. Green gentrification followed \
+		greening in 17 of 28 European and North American cities (Anguelovski et al. \
+		2022, Nature Communications 13:3816), but no study reports displacement \
+		per hectare greened. In gentrifying neighbourhoods, vulnerable residents \
+		leave at 0.4 to 0.5 percentage points a year above the usual rate (Ding, \
+		Hwang and Divringi 2016, Regional Science and Urban Economics; Freeman \
+		2005, Urban Affairs Review). A greening of 5 percent of a neighbourhood \
+		followed by a decade of such excess moves displaces about 5 percent, a \
+		sensitivity near 1, and about 0.6 once only 17 in 28 cities gentrify. \
+		Range 0.2 to 1.5. Needs WP3 and pilot housing data.
+	|
+
+Maximum Other Sector Funding Ratio=
+	1
+	~	Dmnl [0,2]
+	~	Funding from other sectors as a multiple of the municipal NBS budget, when \
+		integration is complete and NBS delivers its full potential. ASSUMPTION, \
+		checked against the literature (v5.1): value kept. About 75 percent of \
+		European urban NBS are publicly funded, mostly by municipal budgets (Urban \
+		Nature Atlas, 1000 NBS in 100 cities, Naturvation). Two anchors: the \
+		English green social prescribing programme drew 0.47 of its funding from \
+		local partners (1.66 million pounds against 3.5 million, national \
+		evaluation 2024); the Copenhagen cloudburst plan is funded 75:25 by the \
+		water utility and the city, a ratio of 3, in a flood-driven, legislated \
+		case. Range 0.5 to 3.
+	|
+
+Programme Cost per Resident Reached=
+	0.1
+	~	kEUR/(person*Year) [0.001,1]
+	~	Annual cost of one resident taking part in a nature programme, in thousand \
+		euro: 0.1 is 100 euro. SOURCE (v5.1): 0.025 -> 0.1. Community health walks: \
+		76 pounds per participant a year, national average (Natural England TIN055, \
+		2009), about 85 euro then and 140 euro in today's prices; the cheapest \
+		scheme reported, 25 pounds (Shropshire). Green social prescribing for \
+		people with mental health needs: 507 pounds per participant, range 97 to \
+		1481 (national evaluation, England, 2021-23), about 590 euro. The model's \
+		programme is population-wide, so the walking-group value is used. Range \
+		0.03 to 0.6.
+	|
+
+Programme Effectiveness=
+	0.45
+	~	Dmnl [0,1]
+	~	Share of programme participants with access, who would not otherwise use \
+		green space, who become regular users. SOURCE (v5.1): 0.4 -> 0.45. Pavey \
+		et al. 2012, Journal of Epidemiology and Community Health, systematic review \
+		of exercise referral schemes: pooled adherence 49 percent (40 to 59) in \
+		observational studies and 43 percent (32 to 54) in trials. Adherence is \
+		the right analogue because cost is per participant (uptake already paid \
+		for). No nature-programme study reports sustained use this way; the \
+		English green social prescribing evaluation found 85 percent uptake when \
+		offered. Range 0.3 to 0.6.
+	|
+
+Green Cover at Half Access[Generic]=
+	0.69
+	~	Dmnl [0.01,1]
+	~	GENERIC CITY. Green cover share at which half of residents have green space close to home \
+		(the WHO recommendation used by ISGlobal: at least 0.5 ha within 300 m, the \
+		300 of 3-30-300). SOURCE (v5.1): 0.2 -> 0.69, calibrated. Across European \
+		cities 62 percent of residents lack this access (Barboza et al. 2021, \
+		Lancet Planetary Health 5:e718-e730) while green and blue infrastructure \
+		covers 42 percent of urban area on average (EEA 2022, Who benefits from \
+		nature in cities?). Solving access = cover / ( cover + h ) gives h = 0.42 x \
+		0.62 / 0.38 = 0.69. Recalibrate per pilot with h = cover x ( 1 - access ) / \
+		access, using Table 4 access (Paijat-Hame 67.6, Cork 21.3, Klagenfurt 34.8, \
+		Malta 23.8 percent) and the pilot's green cover.
+	|
+
+Mental Health Risk Reduction from Nature Use=
+	0.25
+	~	Dmnl [0,1]
+	~	Fraction by which regular nature use lowers the risk of poor mental health. \
+		SOURCE (v5.1): 0.2 -> 0.25. Shanahan et al. 2016, Scientific Reports \
+		6:28551 (Brisbane, n=1538): odds ratio 1.37 (1.09 to 1.74) for depression \
+		among people whose green space visits average under 30 minutes a week; \
+		converted to a relative risk at the sample's prevalence, a 23 to 27 percent \
+		lower risk for regular users. Cross-check: Liu et al. 2023, Environmental \
+		Research 231:116303, meta-analysis: each 10 percent more green space lowers \
+		the odds of depression by 3.7 percent (odds ratio 0.963, 0.948 to 0.979); \
+		with these values the model gives about 1.2 percent through use alone, the \
+		same direction and a conservative share. Range 0.08 to 0.4. Align with the \
+		WP6 exposure-response once chosen.
+	|
+
+Particulate Removal per Unit Green Cover=
+	0.004
+	~	Dmnl [0,0.05]
+	~	Fractional PM2.5 reduction per unit green cover share: 0.004 means 25 \
+		percent cover removes 0.1 percent. SOURCE (v5.1): 0.05 -> 0.004. Nowak et \
+		al. 2013, Environmental Pollution 178:395-402, ten US cities: trees improved \
+		annual PM2.5 by 0.05 to 0.24 percent at tree cover of 16 to 52 percent, \
+		0.002 to 0.007 per unit of cover, mean 0.004. Grass removes less than trees, \
+		and in street canyons dense vegetation can trap traffic pollution and raise \
+		local levels (Abhijith et al. 2017, Atmospheric Environment). Range 0 to \
+		0.007.
+	|
+
+Background Habitat Value=
+	0.3
+	~	Dmnl [0,1]
+	~	Habitat value of green cover outside the programme (gardens, woodland, farm \
+		land), 0 to 1, where 1 is well-managed programme NBS. SOURCE (v5.1): 0.5 -> \
+		0.3. England's statutory biodiversity metric (Defra 2024) scores habitat \
+		as distinctiveness (low 2, medium 4, high 6) times condition (poor 1, \
+		moderate 2, good 3); a medium habitat in good condition, the aim of good \
+		urban greening, scores 12 per hectare and is set to 1 here. Vegetated \
+		gardens and arable land are low distinctiveness (2/12 = 0.17); woodland is \
+		high (1 or more). A mix of 60 percent gardens, 20 percent woodland and 20 \
+		percent farm land gives about 0.3. Set per pilot from Urban Atlas land cover.
+	|
+
+Minimum NBS Habitat Value=
+	0.17
+	~	Dmnl [0,1]
+	~	Habitat value of programme NBS delivered at zero quality (lawn, single \
+		species); rises to 1 at perfect quality. SOURCE (v5.1): 0.2 -> 0.17. \
+		Statutory biodiversity metric (Defra 2024): modified grassland, green roofs \
+		and rain gardens are low distinctiveness; in poor condition they score 2 \
+		per hectare against 12 for a medium habitat in good condition, 2/12 = 0.17.
+	|
+
+********************************************************
+	.Delivery Parameters
+********************************************************~
+		From v3. Resource quantities are rescaled to thousand euro and hectares so
+		that, for a homogeneous city, v4 reproduces v3 exactly.
+	|
+
+Initial Municipal NBS Capability=
+	0.45
+	~	Dmnl [0,1]
+	~	Municipal capability at the start of the run, as a fraction of best \
+		practice.
+	|
+
+Initial Public and Political Support=
+	0.5
+	~	Dmnl [0,1]
+	~	Public and political support at the start of the run.
+	|
+
+Delivery Cost per Hectare[Generic]=
+	200
+	~	kEUR/ha [10,5000]
+	~	GENERIC CITY. Resources needed to deliver one hectare of functioning green cover at \
+		perfect quality, in thousand euro.
+	|
+
+Minimum Delivery Time=
+	1
+	~	Year [1,10]
+	~	Shortest time in which a neighbourhood's remaining room for NBS could be \
+		filled, however much money is available: design, procurement, planting \
+		and establishment all take time. It also bounds the model's fastest rate, \
+		so that any city's parameter values integrate accurately.
+	|
+
+Base NBS Lifetime=
+	50
+	~	Year [5,200]
+	~	Life of functioning NBS at perfect quality.
+	|
+
+Extra Decay at Zero Quality=
+	3
+	~	Dmnl [0,9]
+	~	Additional multiples of the baseline decay rate when delivery quality is \
+		zero.
+	|
+
+Minimum Quality=
+	0.2
+	~	Dmnl [0,1]
+	~	Quality floor. Even a city with no capability delivers something.
+	|
+
+Capability Build Time=
+	6
+	~	Year [2,50]
+	~	Time to close the capability gap at full investment.
+	|
+
+Maximum Improvement Absorption=
+	2
+	~	Dmnl [1,5]
+	~	Ceiling on how fast capability building can run relative to its reference \
+		rate, however much money is spent.
+	|
+
+Reference Capability Investment[City]=
+	Reference Capability Investment Share * Effective Municipal NBS Budget[City]
+	~	kEUR/Year
+	~	Improvement spend that supports capability building at full rate. New in v6: \
+		a fixed share of the city's budget, so that results do not depend on city \
+		size. In v5.1 it was a fixed 8,100 thousand euro, which let a larger city \
+		build capability faster only because it was larger: a Malta-sized copy of \
+		the generic city reached capability 0.79 instead of 0.55 (feasibility test, \
+		2026-09-19).
+	|
+
+Reference Capability Investment Share=
+	0.5625
+	~	Dmnl [0.01,10]
+	~	Reference capability investment as a share of the municipal NBS budget. \
+		0.5625 is v5.1's 8,100 over the generic budget of 14,400, so the generic \
+		city is unchanged. New in v6.
+	|
+
+
+Support Adjustment Time=
+	4
+	~	Year [2,50]
+	~	Time constant for support to adjust. Also carries the perception lag.
+	|
+
+Harm Sensitivity=
+	3
+	~	Dmnl [0,3]
+	~	How strongly adverse effects erode support.
+	|
+
+Baseline Support Decay=
+	0.15
+	~	Dmnl [0,1]
+	~	Fade in political attention absent any visible delivery.
+	|
+
+Reference Shortfall=
+	0.15
+	~	Dmnl [0.01,1]
+	~	Shortfall that counts as normal pressure.
+	|
+
+Maximum Harm Fraction=
+	0.5
+	~	Dmnl [0,1]
+	~	Harm from poor delivery as a share of gross benefit at zero quality.
+	|
+
+********************************************************
+	.City Profile Cork
+********************************************************~
+		Cork, Ireland: a city of 222,333 residents. CITY DATA marks a value from
+		statistics for the city, its region or its country; PROVISIONAL marks a
+		value still set to the generic city (per resident or per hectare) until
+		pilot or WP3 data arrive. New in v6.
+	|
+
+Population[Cork, Neighbourhood]=
+	66700, 155633
+	~	person [100,10000000]
+	~	CITY DATA, Cork: 222,333 residents (proposal Table 4). The split between \
+		neighbourhood types is PROVISIONAL: 30 percent of residents in deprived \
+		areas, as in the generic city, until WP3 maps the city's deprived areas (for \
+		example the most deprived fifth of small areas, from the national \
+		deprivation index).
+	|
+
+Land Area[Cork, Neighbourhood]=
+	889, 3557
+	~	ha [10,100000]
+	~	PROVISIONAL, Cork. Residential land at the generic city's densities (75 \
+		residents per hectare in deprived areas, 44 elsewhere) until WP3 maps a \
+		harmonised urban core. The administrative density in proposal Table 4 is not \
+		used: for Lahti and Klagenfurt it includes forest, farmland and lakes, which \
+		would make these cities look greener than their residents' surroundings are \
+		(feasibility test, 2026-09-19).
+	|
+
+Background Green Cover[Cork, Neighbourhood]=
+	0.06, 0.14
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Cork: the generic city's values, pending the decision on what \
+		green cover means (v5.1 evidence, decision 1). Harmonised data ready for \
+		either definition, ISGlobal ranking of cities (isglobalranking.org), from \
+		Barboza et al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, \
+		Lancet Planetary Health: green area 19.7 percent of land within 300 m of \
+		homes (Urban Atlas 2012; publicly designated green space) and NDVI 0.538 \
+		(all vegetation).
+	|
+
+Initial NBS Cover[Cork, Neighbourhood]=
+	0.04, 0.08
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Cork: the generic city's values. To come from the city's own \
+		inventory of parks, street trees and other green infrastructure it \
+		maintains, or from Urban Atlas 'green urban areas' (WP3).
+	|
+
+Municipal NBS Budget[Cork]=
+	10461
+	~	kEUR/Year [0,200000]
+	~	PROVISIONAL, calibrated, Cork: 47 euro per resident a year (222,333 \
+		residents). Chosen so that the city's public green is roughly stable from \
+		2012, the neutral assumption while the real budget is unknown. The generic \
+		city's 96 euro per resident instead implied a 31 percent expansion of public \
+		green by 2026, which no European city has achieved (plausibility.py). At \
+		this budget the model spends about 33 thousand euro a year per hectare of \
+		public green, covering renewal and the municipal organisation as well as \
+		upkeep; city park agencies spend on average 12.7 thousand US dollars per \
+		hectare on operations alone, range 3.2 to 54.9 (KPMG, Park access, 2017), \
+		and UK parks services about 20 to 30 pounds per resident. Replace with the \
+		city's reported NBS spending (WP5), or calibrate against the observed change \
+		in public green (Urban Atlas 2012, 2018, 2021).
+	|
+
+Annual Death Rate[Cork]=
+	0.0073
+	~	1/Year [0,0.03]
+	~	CITY DATA, Cork. Crude death rate 7.3 per 1,000 residents, NUTS 3 region \
+		IE053 South-West (Cork and Kerry), 2023 (Eurostat demo_r_gind3). The region \
+		is wider than the city.
+	|
+
+Baseline Nature Engagement[Cork, Neighbourhood]=
+	0.436, 0.523
+	~	Dmnl [0,1]
+	~	CITY DATA, scaled, Cork. Special Eurobarometer 525 (2022): 41 percent of \
+		physically active adults in Ireland exercise in a park or outdoors, against \
+		47 percent in the EU. The generic values (0.5, 0.6; White et al. 2019) are \
+		scaled by 41/47. National figure; WP4 surveys can replace it.
+	|
+
+Background Fine Particulates[Cork, Neighbourhood]=
+	8.37, 6.70
+	~	ugm3 [0,100]
+	~	CITY DATA, Cork. Annual mean PM2.5 7.2 micrograms per cubic metre, ranked \
+		834 of 858 European cities (ISGlobal ranking of cities \
+		(isglobalranking.org), from Barboza et al. 2021, Lancet Planetary Health, \
+		and Khomenko et al. 2021, Lancet Planetary Health; proposal Table 4). The \
+		split between neighbourhood types is PROVISIONAL, as in the generic city \
+		(deprived areas 25 percent higher), with the population-weighted mean equal \
+		to 7.2.
+	|
+
+Poor Mental Health Prevalence[Cork]=
+	0.07
+	~	Dmnl [0,0.5]
+	~	CITY DATA, scaled, Cork. Eurostat EHIS 2019 (hlth_ehis_mh1e): 4.9 percent of \
+		adults in Ireland report current depressive symptoms, against 7.0 percent in \
+		the EU. The generic value (0.10, depression and anxiety, IHME) is scaled by \
+		4.9/7.0. National figure.
+	|
+
+Delivery Cost per Hectare[Cork]=
+	192.6
+	~	kEUR/ha [10,5000]
+	~	CITY DATA, scaled, Cork. Eurostat price level index for construction, 2024 \
+		(prc_ppp_ind, EU27 = 100): Ireland 96.3. The generic cost (200, an \
+		EU-average city) is scaled by 96.3/100. National figure.
+	|
+
+Green Cover at Half Access[Cork]=
+	0.6671
+	~	Dmnl [0.01,1]
+	~	CITY DATA, calibrated, Cork. 78.73 percent of residents live where green \
+		area within 300 m is below the 25 percent that provides WHO-recommended \
+		access (ISGlobal ranking of cities (isglobalranking.org), from Barboza et \
+		al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, Lancet \
+		Planetary Health; proposal Table 4), so access is 21.27 percent. The value \
+		is solved so that the model's access at time 0 matches, given the \
+		provisional green cover above; it will be recalibrated when the city's green \
+		cover is measured. It measures how well a city's green space is spread among \
+		its homes: low where green is close to most residents.
+	|
+
+
+********************************************************
+	.City Profile Klagenfurt
+********************************************************~
+		Klagenfurt am Woerthersee, Austria: a city of 103,009 residents. CITY
+		DATA marks a value from statistics for the city, its region or its
+		country; PROVISIONAL marks a value still set to the generic city (per
+		resident or per hectare) until pilot or WP3 data arrive. New in v6.
+	|
+
+Population[Klagenfurt, Neighbourhood]=
+	30903, 72106
+	~	person [100,10000000]
+	~	CITY DATA, Klagenfurt: 103,009 residents (proposal Table 4). The split \
+		between neighbourhood types is PROVISIONAL: 30 percent of residents in \
+		deprived areas, as in the generic city, until WP3 maps the city's deprived \
+		areas (for example the most deprived fifth of small areas, from the national \
+		deprivation index).
+	|
+
+Land Area[Klagenfurt, Neighbourhood]=
+	412, 1648
+	~	ha [10,100000]
+	~	PROVISIONAL, Klagenfurt. Residential land at the generic city's densities \
+		(75 residents per hectare in deprived areas, 44 elsewhere) until WP3 maps a \
+		harmonised urban core. The administrative density in proposal Table 4 is not \
+		used: for Lahti and Klagenfurt it includes forest, farmland and lakes, which \
+		would make these cities look greener than their residents' surroundings are \
+		(feasibility test, 2026-09-19).
+	|
+
+Background Green Cover[Klagenfurt, Neighbourhood]=
+	0.06, 0.14
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Klagenfurt: the generic city's values, pending the decision on \
+		what green cover means (v5.1 evidence, decision 1). Harmonised data ready \
+		for either definition, ISGlobal ranking of cities (isglobalranking.org), \
+		from Barboza et al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, \
+		Lancet Planetary Health: green area 48.4 percent of land within 300 m of \
+		homes (Urban Atlas 2012; publicly designated green space) and NDVI 0.581 \
+		(all vegetation).
+	|
+
+Initial NBS Cover[Klagenfurt, Neighbourhood]=
+	0.04, 0.08
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Klagenfurt: the generic city's values. To come from the city's \
+		own inventory of parks, street trees and other green infrastructure it \
+		maintains, or from Urban Atlas 'green urban areas' (WP3).
+	|
+
+Municipal NBS Budget[Klagenfurt]=
+	5622
+	~	kEUR/Year [0,200000]
+	~	PROVISIONAL, calibrated, Klagenfurt: 55 euro per resident a year (103,009 \
+		residents). Chosen so that the city's public green is roughly stable from \
+		2012, the neutral assumption while the real budget is unknown. The generic \
+		city's 96 euro per resident instead implied a 31 percent expansion of public \
+		green by 2026, which no European city has achieved (plausibility.py). At \
+		this budget the model spends about 38 thousand euro a year per hectare of \
+		public green, covering renewal and the municipal organisation as well as \
+		upkeep; city park agencies spend on average 12.7 thousand US dollars per \
+		hectare on operations alone, range 3.2 to 54.9 (KPMG, Park access, 2017), \
+		and UK parks services about 20 to 30 pounds per resident. Replace with the \
+		city's reported NBS spending (WP5), or calibrate against the observed change \
+		in public green (Urban Atlas 2012, 2018, 2021).
+	|
+
+Annual Death Rate[Klagenfurt]=
+	0.0110
+	~	1/Year [0,0.03]
+	~	CITY DATA, Klagenfurt. Crude death rate 11.0 per 1,000 residents, NUTS 3 \
+		region AT211 Klagenfurt-Villach, 2023 (Eurostat demo_r_gind3). The region is \
+		wider than the city.
+	|
+
+Baseline Nature Engagement[Klagenfurt, Neighbourhood]=
+	0.649, 0.779
+	~	Dmnl [0,1]
+	~	CITY DATA, scaled, Klagenfurt. Special Eurobarometer 525 (2022): 61 percent \
+		of physically active adults in Austria exercise in a park or outdoors, \
+		against 47 percent in the EU. The generic values (0.5, 0.6; White et al. \
+		2019) are scaled by 61/47. National figure; WP4 surveys can replace it.
+	|
+
+Background Fine Particulates[Klagenfurt, Neighbourhood]=
+	15.58, 12.47
+	~	ugm3 [0,100]
+	~	CITY DATA, Klagenfurt. Annual mean PM2.5 13.4 micrograms per cubic metre, \
+		ranked 361 of 858 European cities (ISGlobal ranking of cities \
+		(isglobalranking.org), from Barboza et al. 2021, Lancet Planetary Health, \
+		and Khomenko et al. 2021, Lancet Planetary Health; proposal Table 4). The \
+		split between neighbourhood types is PROVISIONAL, as in the generic city \
+		(deprived areas 25 percent higher), with the population-weighted mean equal \
+		to 13.4.
+	|
+
+Poor Mental Health Prevalence[Klagenfurt]=
+	0.08
+	~	Dmnl [0,0.5]
+	~	CITY DATA, scaled, Klagenfurt. Eurostat EHIS 2019 (hlth_ehis_mh1e): 5.6 \
+		percent of adults in Austria report current depressive symptoms, against 7.0 \
+		percent in the EU. The generic value (0.10, depression and anxiety, IHME) is \
+		scaled by 5.6/7.0. National figure.
+	|
+
+Delivery Cost per Hectare[Klagenfurt]=
+	223.4
+	~	kEUR/ha [10,5000]
+	~	CITY DATA, scaled, Klagenfurt. Eurostat price level index for construction, \
+		2024 (prc_ppp_ind, EU27 = 100): Austria 111.7. The generic cost (200, an \
+		EU-average city) is scaled by 111.7/100. National figure.
+	|
+
+Green Cover at Half Access[Klagenfurt]=
+	0.3320
+	~	Dmnl [0.01,1]
+	~	CITY DATA, calibrated, Klagenfurt. 65.16 percent of residents live where \
+		green area within 300 m is below the 25 percent that provides \
+		WHO-recommended access (ISGlobal ranking of cities (isglobalranking.org), \
+		from Barboza et al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, \
+		Lancet Planetary Health; proposal Table 4), so access is 34.84 percent. The \
+		value is solved so that the model's access at time 0 matches, given the \
+		provisional green cover above; it will be recalibrated when the city's green \
+		cover is measured. It measures how well a city's green space is spread among \
+		its homes: low where green is close to most residents.
+	|
+
+
+********************************************************
+	.City Profile Lahti
+********************************************************~
+		Lahti, Finland, the centre of the Paijat-Hame pilot: 120,122 residents
+		(the proposal's Table 4 figures for Paijat-Hame are Lahti's). CITY DATA
+		marks a value from statistics for the city, its region or its country;
+		PROVISIONAL marks a value still set to the generic city (per resident or
+		per hectare) until pilot or WP3 data arrive. New in v6.
+	|
+
+Population[Lahti, Neighbourhood]=
+	36037, 84085
+	~	person [100,10000000]
+	~	CITY DATA, Lahti: 120,122 residents (proposal Table 4). The split between \
+		neighbourhood types is PROVISIONAL: 30 percent of residents in deprived \
+		areas, as in the generic city, until WP3 maps the city's deprived areas (for \
+		example the most deprived fifth of small areas, from the national \
+		deprivation index).
+	|
+
+Land Area[Lahti, Neighbourhood]=
+	480, 1922
+	~	ha [10,100000]
+	~	PROVISIONAL, Lahti. Residential land at the generic city's densities (75 \
+		residents per hectare in deprived areas, 44 elsewhere) until WP3 maps a \
+		harmonised urban core. The administrative density in proposal Table 4 is not \
+		used: for Lahti and Klagenfurt it includes forest, farmland and lakes, which \
+		would make these cities look greener than their residents' surroundings are \
+		(feasibility test, 2026-09-19).
+	|
+
+Background Green Cover[Lahti, Neighbourhood]=
+	0.06, 0.14
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Lahti: the generic city's values, pending the decision on what \
+		green cover means (v5.1 evidence, decision 1). Harmonised data ready for \
+		either definition, ISGlobal ranking of cities (isglobalranking.org), from \
+		Barboza et al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, \
+		Lancet Planetary Health: green area 43.7 percent of land within 300 m of \
+		homes (Urban Atlas 2012; publicly designated green space) and NDVI 0.529 \
+		(all vegetation).
+	|
+
+Initial NBS Cover[Lahti, Neighbourhood]=
+	0.04, 0.08
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Lahti: the generic city's values. To come from the city's own \
+		inventory of parks, street trees and other green infrastructure it \
+		maintains, or from Urban Atlas 'green urban areas' (WP3).
+	|
+
+Municipal NBS Budget[Lahti]=
+	6538
+	~	kEUR/Year [0,200000]
+	~	PROVISIONAL, calibrated, Lahti: 54 euro per resident a year (120,122 \
+		residents). Chosen so that the city's public green is roughly stable from \
+		2012, the neutral assumption while the real budget is unknown. The generic \
+		city's 96 euro per resident instead implied a 31 percent expansion of public \
+		green by 2026, which no European city has achieved (plausibility.py). At \
+		this budget the model spends about 38 thousand euro a year per hectare of \
+		public green, covering renewal and the municipal organisation as well as \
+		upkeep; city park agencies spend on average 12.7 thousand US dollars per \
+		hectare on operations alone, range 3.2 to 54.9 (KPMG, Park access, 2017), \
+		and UK parks services about 20 to 30 pounds per resident. Replace with the \
+		city's reported NBS spending (WP5), or calibrate against the observed change \
+		in public green (Urban Atlas 2012, 2018, 2021).
+	|
+
+Annual Death Rate[Lahti]=
+	0.0135
+	~	1/Year [0,0.03]
+	~	CITY DATA, Lahti. Crude death rate 13.5 per 1,000 residents, NUTS 3 region \
+		FI1C3 Paijat-Hame, 2022 (latest published) (Eurostat demo_r_gind3). The \
+		region is wider than the city.
+	|
+
+Baseline Nature Engagement[Lahti, Neighbourhood]=
+	0.702, 0.843
+	~	Dmnl [0,1]
+	~	CITY DATA, scaled, Lahti. Special Eurobarometer 525 (2022): 66 percent of \
+		physically active adults in Finland exercise in a park or outdoors, against \
+		47 percent in the EU. The generic values (0.5, 0.6; White et al. 2019) are \
+		scaled by 66/47. National figure; WP4 surveys can replace it.
+	|
+
+Background Fine Particulates[Lahti, Neighbourhood]=
+	6.74, 5.40
+	~	ugm3 [0,100]
+	~	CITY DATA, Lahti. Annual mean PM2.5 5.8 micrograms per cubic metre, ranked \
+		851 of 858 European cities (ISGlobal ranking of cities \
+		(isglobalranking.org), from Barboza et al. 2021, Lancet Planetary Health, \
+		and Khomenko et al. 2021, Lancet Planetary Health; proposal Table 4). The \
+		split between neighbourhood types is PROVISIONAL, as in the generic city \
+		(deprived areas 25 percent higher), with the population-weighted mean equal \
+		to 5.8.
+	|
+
+Poor Mental Health Prevalence[Lahti]=
+	0.093
+	~	Dmnl [0,0.5]
+	~	CITY DATA, scaled, Lahti. Eurostat EHIS 2019 (hlth_ehis_mh1e): 6.5 percent \
+		of adults in Finland report current depressive symptoms, against 7.0 percent \
+		in the EU. The generic value (0.10, depression and anxiety, IHME) is scaled \
+		by 6.5/7.0. National figure.
+	|
+
+Delivery Cost per Hectare[Lahti]=
+	222.8
+	~	kEUR/ha [10,5000]
+	~	CITY DATA, scaled, Lahti. Eurostat price level index for construction, 2024 \
+		(prc_ppp_ind, EU27 = 100): Finland 111.4. The generic cost (200, an \
+		EU-average city) is scaled by 111.4/100. National figure.
+	|
+
+Green Cover at Half Access[Lahti]=
+	0.0815
+	~	Dmnl [0.01,1]
+	~	CITY DATA, calibrated, Lahti. 32.4 percent of residents live where green \
+		area within 300 m is below the 25 percent that provides WHO-recommended \
+		access (ISGlobal ranking of cities (isglobalranking.org), from Barboza et \
+		al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, Lancet \
+		Planetary Health; proposal Table 4), so access is 67.60 percent. The value \
+		is solved so that the model's access at time 0 matches, given the \
+		provisional green cover above; it will be recalibrated when the city's green \
+		cover is measured. It measures how well a city's green space is spread among \
+		its homes: low where green is close to most residents.
+	|
+
+
+********************************************************
+	.City Profile Malta
+********************************************************~
+		Malta: the national conurbation of 533,286 residents (listed as Valletta
+		in the ISGlobal ranking). CITY DATA marks a value from statistics for
+		the city, its region or its country; PROVISIONAL marks a value still set
+		to the generic city (per resident or per hectare) until pilot or WP3
+		data arrive. New in v6.
+	|
+
+Population[Malta, Neighbourhood]=
+	159986, 373300
+	~	person [100,10000000]
+	~	CITY DATA, Malta: 533,286 residents (proposal Table 4). The split between \
+		neighbourhood types is PROVISIONAL: 30 percent of residents in deprived \
+		areas, as in the generic city, until WP3 maps the city's deprived areas (for \
+		example the most deprived fifth of small areas, from the national \
+		deprivation index).
+	|
+
+Land Area[Malta, Neighbourhood]=
+	2133, 8533
+	~	ha [10,100000]
+	~	PROVISIONAL, Malta. Residential land at the generic city's densities (75 \
+		residents per hectare in deprived areas, 44 elsewhere) until WP3 maps a \
+		harmonised urban core. The administrative density in proposal Table 4 is not \
+		used: for Lahti and Klagenfurt it includes forest, farmland and lakes, which \
+		would make these cities look greener than their residents' surroundings are \
+		(feasibility test, 2026-09-19).
+	|
+
+Background Green Cover[Malta, Neighbourhood]=
+	0.06, 0.14
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Malta: the generic city's values, pending the decision on what \
+		green cover means (v5.1 evidence, decision 1). Harmonised data ready for \
+		either definition, ISGlobal ranking of cities (isglobalranking.org), from \
+		Barboza et al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, \
+		Lancet Planetary Health: green area 25.2 percent of land within 300 m of \
+		homes (Urban Atlas 2012; publicly designated green space) and NDVI 0.243 \
+		(all vegetation).
+	|
+
+Initial NBS Cover[Malta, Neighbourhood]=
+	0.04, 0.08
+	~	Dmnl [0,0.9]
+	~	PROVISIONAL, Malta: the generic city's values. To come from the city's own \
+		inventory of parks, street trees and other green infrastructure it \
+		maintains, or from Urban Atlas 'green urban areas' (WP3).
+	|
+
+Municipal NBS Budget[Malta]=
+	22098
+	~	kEUR/Year [0,200000]
+	~	PROVISIONAL, calibrated, Malta: 41 euro per resident a year (533,286 \
+		residents). Chosen so that the city's public green is roughly stable from \
+		2012, the neutral assumption while the real budget is unknown. The generic \
+		city's 96 euro per resident instead implied a 31 percent expansion of public \
+		green by 2026, which no European city has achieved (plausibility.py). At \
+		this budget the model spends about 29 thousand euro a year per hectare of \
+		public green, covering renewal and the municipal organisation as well as \
+		upkeep; city park agencies spend on average 12.7 thousand US dollars per \
+		hectare on operations alone, range 3.2 to 54.9 (KPMG, Park access, 2017), \
+		and UK parks services about 20 to 30 pounds per resident. Replace with the \
+		city's reported NBS spending (WP5), or calibrate against the observed change \
+		in public green (Urban Atlas 2012, 2018, 2021).
+	|
+
+Annual Death Rate[Malta]=
+	0.0072
+	~	1/Year [0,0.03]
+	~	CITY DATA, Malta. Crude death rate 7.2 per 1,000 residents, NUTS 3 region \
+		MT001 Malta, 2023 (Eurostat demo_r_gind3). The region is wider than the \
+		city.
+	|
+
+Baseline Nature Engagement[Malta, Neighbourhood]=
+	0.213, 0.255
+	~	Dmnl [0,1]
+	~	CITY DATA, scaled, Malta. Special Eurobarometer 525 (2022): 20 percent of \
+		physically active adults in Malta exercise in a park or outdoors, against 47 \
+		percent in the EU. The generic values (0.5, 0.6; White et al. 2019) are \
+		scaled by 20/47. National figure; WP4 surveys can replace it.
+	|
+
+Background Fine Particulates[Malta, Neighbourhood]=
+	20.35, 16.28
+	~	ugm3 [0,100]
+	~	CITY DATA, Malta. Annual mean PM2.5 17.5 micrograms per cubic metre, ranked \
+		117 of 858 European cities (ISGlobal ranking of cities \
+		(isglobalranking.org), from Barboza et al. 2021, Lancet Planetary Health, \
+		and Khomenko et al. 2021, Lancet Planetary Health; proposal Table 4). The \
+		split between neighbourhood types is PROVISIONAL, as in the generic city \
+		(deprived areas 25 percent higher), with the population-weighted mean equal \
+		to 17.5.
+	|
+
+Poor Mental Health Prevalence[Malta]=
+	0.126
+	~	Dmnl [0,0.5]
+	~	CITY DATA, scaled, Malta. Eurostat EHIS 2019 (hlth_ehis_mh1e): 8.8 percent \
+		of adults in Malta report current depressive symptoms, against 7.0 percent \
+		in the EU. The generic value (0.10, depression and anxiety, IHME) is scaled \
+		by 8.8/7.0. National figure.
+	|
+
+Delivery Cost per Hectare[Malta]=
+	169.6
+	~	kEUR/ha [10,5000]
+	~	CITY DATA, scaled, Malta. Eurostat price level index for construction, 2024 \
+		(prc_ppp_ind, EU27 = 100): Malta 84.8. The generic cost (200, an EU-average \
+		city) is scaled by 84.8/100. National figure.
+	|
+
+Green Cover at Half Access[Malta]=
+	0.5758
+	~	Dmnl [0.01,1]
+	~	CITY DATA, calibrated, Malta. 76.21 percent of residents live where green \
+		area within 300 m is below the 25 percent that provides WHO-recommended \
+		access (ISGlobal ranking of cities (isglobalranking.org), from Barboza et \
+		al. 2021, Lancet Planetary Health, and Khomenko et al. 2021, Lancet \
+		Planetary Health; proposal Table 4), so access is 23.79 percent. The value \
+		is solved so that the model's access at time 0 matches, given the \
+		provisional green cover above; it will be recalibrated when the city's green \
+		cover is measured. It measures how well a city's green space is spread among \
+		its homes: low where green is close to most residents.
+	|
+
+
+********************************************************
+	.Control
+********************************************************~
+		Simulation control parameters. New in v7: the model runs in calendar years,
+		2012 to 2075, instead of year 0 to 60. Nothing else changed, so every result
+		is the same number at the same age of the run: year 60 is now 2072. v8
+		extended the end from 2072 to 2075.
+
+		Why 2012. It is the Urban Atlas edition behind each pilot's green area and
+		green space access (Barboza et al. 2021), the two values that anchor the city
+		profiles. Starting there leaves 2012 to today as a stretch of history that can
+		be compared with what actually happened, once the observed series arrive
+		(WP3). The model is NOT calibrated to history yet: the state at 2012 is still
+		the provisional profile.
+
+		Why 2075. It is a round 2075 rather than an arbitrary 2072, it still passes
+		through year 60 of the run (2072) where every recorded result is measured, and
+		it covers the policy dates that matter: 2030 (EU biodiversity strategy, the
+		3-30-300 rule) and 2050 (climate neutrality).
+
+		Data years of the profile values, which differ and are not all 2012: green
+		area and access 2012 (Urban Atlas) with 2015 satellite greenness; PM2.5 2015;
+		depressive symptoms 2019; park use 2022; death rates 2023 (Lahti 2022);
+		construction prices 2024. Each is held constant through the run. See each
+		city's profile group and NBS_Scaling_Quanti_v8_changes.md.
+	|
+
+FINAL TIME  = 2075
+	~	Year
+	~	The final time for the simulation: 63 years, ending on a round policy \
+		horizon. See the group comment above.
+	|
+
+INITIAL TIME  = 2012
+	~	Year
+	~	The initial time for the simulation. The state at 2012 is the city profile, \
+		which is provisional and not yet calibrated to observed history. \
+		See the group comment above.
+	|
+
+SAVEPER=
+        TIME STEP
+	~	Year [0,?]
+	~	The frequency with which output is stored.
+	|
+
+TIME STEP  = 0.125
+	~	Year [0,?]
+	~	The time step for the simulation. Half of v3's 0.25, so that even the \
+		fastest corner of the declared parameter envelope integrates to within 1 \
+		percent; results for the default city differ from 0.25 by well under 1 percent.
+	|
+
+\\\---/// Sketch information - do not modify anything except names
+V300  Do not put anything below this section - it will be ignored
+*NBS Scaling Quantitative v8
+$192-192-192,0,Calibri|12||0-0-0|0-0-0|0-0-255|-1--1--1|-1--1--1|96,96,100,0
+10,1,Ambition Scale,1300,870,60,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,2,Annual Death Rate,1400,1050,72,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,3,Background Fine Particulates,1420,1150,64,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,4,Background Green Cover,220,960,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,5,Background Habitat Value,1700,1420,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,6,Base NBS Lifetime,1290,330,72,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,7,Baseline Nature Engagement,660,1490,64,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,8,Baseline Support Decay,1830,430,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,9,Benefit per Hectare of NBS,1510,180,60,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,10,Capability Build Time,900,610,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,11,Capability Building,720,530,45,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,12,Capability Erosion,1080,540,76,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,13,Capability Improvement Effort,560,590,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,14,City Green Cover,650,1140,68,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,15,Effective Clean Air Policy Emission Cut,1640,1250,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,16,Effective Cross Sectoral Integration,110,320,60,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,17,Decay Multiplier,1130,430,68,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,18,Delivery Cost per Hectare,600,150,72,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,19,Desired NBS Performance,1300,780,48,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,20,Effective Displacement Safeguards,1640,-70,52,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,21,Displacement Sensitivity to Greening,1380,-40,60,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,22,Expected NBS Lifetime,1640,1030,52,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,23,Extra Decay at Zero Quality,1300,440,60,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,24,Fine Particulate Concentration,1420,1250,68,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,25,Functioning NBS,1000,170,70,24,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,26,Funding from Other Sectors,300,270,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,27,Green Area,430,1020,45,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,28,Green Cover,650,1020,48,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,29,Green Cover Gap,880,1150,64,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,30,Green Cover Target,650,1250,76,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,31,Green Cover at Half Access,220,1380,60,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,32,Green Gentrification Displacement,1560,40,60,27,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,33,Green Space Access,430,1380,76,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,34,Habitat Cover,1480,1420,56,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,35,Harm Sensitivity,1840,540,68,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,36,Heat Mortality Reduction per Degree,1130,930,60,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,37,Initial Municipal NBS Capability,720,430,72,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,38,Initial NBS Cover,1180,110,72,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,39,Initial Public and Political Support,1700,790,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,40,Land Area,220,1080,41,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,41,Loss of Functionality,1140,270,56,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,42,Maximum Feasible NBS,690,10,68,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,43,Maximum Harm Fraction,1720,240,52,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,44,Maximum Improvement Absorption,520,480,48,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,45,Maximum NBS Cover,480,-10,72,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,46,Maximum Other Sector Funding Ratio,110,215,60,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,47,Maximum Rollout Share,560,800,64,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,48,Mental Health Risk Reduction from Nature Use,1130,1290,76,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,49,Minimum Delivery Time,560,70,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,50,Minimum NBS Habitat Value,1480,1530,56,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,51,Minimum Quality,780,330,64,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,52,Mortality Reduction per Unit Green Cover,1390,940,76,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,53,Effective Municipal NBS Budget,300,130,56,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,54,Municipal NBS Capability,900,500,62,27,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,55,NBS Implementation,780,200,76,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,56,NBS Implementation and Design Quality,940,370,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,57,NBS Performance Shortfall,1070,720,64,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,58,Nature Programme Reach,900,1490,68,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,59,Nature Programme Spending,160,500,68,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,60,Need for Capability Building,800,690,45,27,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,61,Particulate Removal per Unit Green Cover,1600,1170,68,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,62,Poor Mental Health Cases Avoided,900,1380,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,63,Poor Mental Health Prevalence,1130,1380,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,64,Population,1170,1140,45,11,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,65,Premature Deaths Avoided by Green Cover,1150,1030,68,27,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,66,Pressure at Half Share,390,760,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,67,Programme Cost per Resident Reached,1130,1490,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,68,Programme Effectiveness,430,1490,56,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,69,Progress to Green Cover Target,880,1250,72,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,70,Public and Political Support for NBS,1580,680,70,35,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,71,Realized NBS Performance,1330,560,52,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,72,Reference Capability Investment,360,620,45,27,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,73,Reference Capability Investment Share,360,700,68,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,74,Reference Shortfall,960,830,41,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,75,Remaining Feasible NBS Opportunity,880,70,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,76,Residents Displaced by Green Gentrification,1800,90,66,43,3,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,77,Resources for NBS Delivery,480,200,72,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,78,Rollout Pressure,780,790,68,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,79,Share of NBS Resources from Other Sectors,300,410,60,27,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,80,Share of New NBS,640,300,68,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,81,Effective Share of New NBS in Deprived Areas,470,365,72,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,82,Effective Share of Resources to Nature Programmes,160,610,76,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,83,Share of Resources to Rollout,560,720,76,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,84,Staff and Knowledge Loss,1120,620,60,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,85,Summer Cooling from Green Cover,890,1030,68,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,86,Summer Cooling per Unit Green Cover,880,930,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,87,Support Adjustment Time,1500,570,76,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,88,Support Building,1420,690,68,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,89,Support Erosion,1670,500,64,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,90,Total Functioning NBS,1290,200,72,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,91,Total NBS Resources,330,200,41,19,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,92,Unintended Social Ecological and Economic Consequences,1520,300,72,35,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,93,Use of Green Space,660,1380,76,11,8,3,0,0,0,0,0,0,0,0,0,0,0,0
+10,94,Annual Death Rate,1222,1091,72,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,95,Background Green Cover,1407,1358,68,19,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,96,Background Green Cover,642,-72,68,19,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,97,Base NBS Lifetime,1712,1091,72,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,98,Benefit per Hectare of NBS,1377,642,60,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,99,Decay Multiplier,1567,968,68,11,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,100,Functioning NBS,502,1081,70,24,3,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,101,Functioning NBS,1571,1342,70,24,3,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,102,Green Cover,1347,1311,48,11,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,103,Green Cover,502,1441,48,11,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,104,Land Area,722,1201,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,105,Land Area,1016,263,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,106,Land Area,722,1081,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,107,Land Area,1632,101,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,108,Land Area,1552,1481,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,109,Land Area,737,92,41,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,110,Maximum Feasible NBS,1437,118,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,111,Mental Health Risk Reduction from Nature Use,827,1318,76,27,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,112,Minimum Delivery Time,852,261,68,19,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,113,Mortality Reduction per Unit Green Cover,976,1093,76,27,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,114,Effective Municipal NBS Budget,312,537,56,19,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,115,NBS Implementation,1632,-21,76,11,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,116,NBS Implementation and Design Quality,1339,1471,76,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,117,Nature Programme Spending,972,1551,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,118,Population,1410,40,45,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,119,Population,827,1551,45,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,120,Population,972,1441,45,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,121,Population,1567,382,45,11,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,122,Programme Effectiveness,587,1318,56,19,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+10,123,Realized NBS Performance,170,140,52,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,124,Reference Capability Investment,767,612,45,27,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+10,125,Effective Share of Resources to Nature Programmes,311,58,76,27,8,2,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,126,1,19,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,127,94,65,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,128,3,24,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,129,4,27,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,130,95,34,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,131,96,42,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,132,5,34,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,133,97,22,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,134,6,41,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,135,7,93,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,136,8,89,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,137,98,71,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,138,9,92,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,139,10,11,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,140,11,54,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,141,12,54,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,142,13,11,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,143,14,69,1,0,43,0,0,64,0,-1--1--1,,1|(771,1181)|
+1,144,15,24,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,145,16,26,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,146,99,22,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,147,17,41,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,148,18,55,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,149,19,57,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,150,20,32,1,0,45,0,0,64,0,-1--1--1,,1|(1551,-50)|
+1,151,21,32,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,152,23,17,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,153,100,27,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,154,101,34,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,155,25,41,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,156,25,75,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,157,25,90,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,158,26,79,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,159,26,91,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,160,27,14,1,0,43,0,0,64,0,-1--1--1,,1|(561,1040)|
+1,161,27,28,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,162,102,24,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,163,28,29,1,0,45,0,0,64,0,-1--1--1,,1|(779,1058)|
+1,164,103,33,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,165,28,65,1,0,43,0,0,64,0,-1--1--1,,1|(900,995)|
+1,166,28,85,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,167,30,69,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,168,31,33,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,169,32,76,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,170,33,93,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,171,35,89,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,172,36,65,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,173,37,54,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,174,38,25,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,175,39,70,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,176,104,14,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,177,105,25,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,178,40,27,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,179,106,28,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,180,107,32,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,181,108,34,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,182,109,42,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,183,41,25,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,184,110,9,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,185,42,25,1,0,43,0,0,64,0,-1--1--1,,1|(900,-16)|
+1,186,42,55,1,0,43,0,0,64,0,-1--1--1,,1|(694,124)|
+1,187,42,75,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,188,43,92,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,189,44,11,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,190,45,42,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,191,46,26,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,192,47,83,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,193,111,62,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,194,112,55,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,195,50,34,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,196,51,56,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,197,113,65,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,198,53,26,1,0,43,0,0,64,0,-1--1--1,,1|(270,200)|
+1,199,114,72,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,200,53,91,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,201,54,11,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,202,54,12,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,203,54,56,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,204,55,25,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,205,115,32,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,206,56,17,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,207,116,34,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,208,56,55,1,0,43,0,0,64,0,-1--1--1,,1|(925,223)|
+1,209,56,92,1,0,45,0,0,64,0,-1--1--1,,1|(1226,305)|
+1,210,57,60,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,211,57,78,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,212,58,93,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,213,117,58,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,214,60,13,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,215,61,24,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,216,63,62,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,217,118,32,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,218,119,58,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,219,120,62,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,220,64,65,1,0,43,0,0,64,0,-1--1--1,,1|(1130,1090)|
+1,221,121,92,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,222,66,83,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,223,67,58,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,224,122,93,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,225,70,19,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,226,70,88,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,227,70,89,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,228,123,26,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,229,71,57,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,230,71,88,1,0,43,0,0,64,0,-1--1--1,,1|(1313,667)|
+1,231,124,11,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,232,73,72,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,233,74,60,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,234,74,78,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,235,75,55,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,236,76,32,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,237,76,92,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,238,77,13,1,0,43,0,0,64,0,-1--1--1,,1|(578,382)|
+1,239,77,55,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,240,78,83,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,241,80,55,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,242,81,80,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,243,82,59,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,244,125,77,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,245,83,13,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,246,83,55,1,0,43,0,0,64,0,-1--1--1,,1|(379,337)|
+1,247,84,12,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,248,85,65,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,249,86,85,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,250,87,88,1,0,45,0,0,64,0,-1--1--1,,1|(1472,638)|
+1,251,87,89,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,252,88,70,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,253,89,70,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,254,90,71,1,0,43,0,0,64,0,-1--1--1,,1|(1384,371)|
+1,255,90,92,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,256,91,59,1,0,43,0,0,64,0,-1--1--1,,1|(-2,209)|
+1,257,91,77,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+1,258,91,79,1,0,45,0,0,64,0,-1--1--1,,1|(181,285)|
+1,259,92,71,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+1,260,92,89,1,0,43,0,0,64,0,-1--1--1,,1|(1631,373)|
+1,261,93,62,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+///---\\\
+:L<%^E!@
+5:Total Functioning NBS
+9:current
+19:100,0
+24:0
+25:0
+26:0
+15:0,0,0,0,0,0
+27:0,
+34:0,
+42:0
+72:0
+73:0
+95:0
+96:0
+97:0
+77:0
+78:0
+102:0
+93:0
+94:0
+92:0
+91:0
+90:0
+87:0
+75:
+43:
+103:8,8,8,3,8
+105:0,0,0,0,0,0,0,0,0,0
+104:Calibri|12||0-0-0|0-0-0|-1--1--1|0-0-255|192-192-192|-1--1--1
+
+10,262,Policy Active,770,760,68,19,8,3,0,3,-1,0,0,0,0-0-0,0-0-0,|||0-0-0,0,0,0,0,0,0
+10,263,Policy Start Year,704,736,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,264,263,262,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+10,265,Policy Phase In,735,699,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,266,265,262,0,0,45,0,0,64,0,-1--1--1,,1|(0,0)|
+10,267,Share of New NBS in Deprived Areas,530,400,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,268,267,81,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,269,Share of New NBS in Deprived Areas before Policy,482,433,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,270,269,81,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,271,Policy Active,409,400,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,272,271,81,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,273,Displacement Safeguards,1710,-70,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,274,273,20,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,275,Displacement Safeguards before Policy,1579,-105,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,276,275,20,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,277,Policy Active,1705,-46,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,278,277,20,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,279,Cross Sectoral Integration,163,364,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,280,279,16,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,281,Cross Sectoral Integration before Policy,49,285,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,282,281,16,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,283,Policy Active,97,251,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,284,283,16,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,285,Share of Resources to Nature Programmes,220,645,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,286,285,82,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,287,Policy Active,172,678,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,288,287,82,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,289,Clean Air Policy Emission Cut,1700,1285,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,290,289,15,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,291,Policy Active,1652,1318,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,292,291,15,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,293,Municipal NBS Budget,360,165,68,19,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,294,293,53,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,295,Budget Change from Policy Start,239,95,80,27,8,3,0,3,-1,0,0,0,0-128-0,0-0-0,|||0-128-0,0,0,0,0,0,0
+1,296,295,53,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|
+10,297,Policy Active,391,52,68,19,8,2,0,3,-1,0,0,0,128-128-128,0-0-0,|||128-128-128,0,0,0,0,0,0
+1,298,297,53,0,0,43,0,0,64,0,-1--1--1,,1|(0,0)|

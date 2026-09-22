@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoGreenNext — NBS scaling dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌳</text></svg>" />
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>GoGreenNext · Scaling nature-based solutions</h1>
+      <div class="spacer"></div>
+      <div class="seg" id="mode-seg" role="group" aria-label="View">
+        <button data-mode="city" aria-pressed="true">One city</button>
+        <button data-mode="compare" aria-pressed="false">Compare cities</button>
+      </div>
+      <button class="btn" id="tour-btn">Guided tour</button>
+      <button class="btn only-narrow" id="controls-btn" aria-expanded="false">Controls</button>
+      <button class="btn" id="theme-btn" aria-label="Switch light or dark theme">Dark</button>
+    </header>
+
+    <aside>
+      <div class="group">
+        <h2>City</h2>
+        <select id="city-select" aria-label="City"></select>
+        <p class="legend-note" id="city-blurb"></p>
+      </div>
+
+      <div class="group">
+        <h2>Scenario</h2>
+        <select id="scenario" aria-label="Scenario preset"></select>
+      </div>
+
+      <div class="group">
+        <h2>When the policy starts</h2>
+        <div id="timing"></div>
+        <p class="legend-note">Everything before this year is the city's own history and
+          does not move when you change a lever.</p>
+      </div>
+
+      <div class="group">
+        <h2>Policy levers</h2>
+        <div id="levers"></div>
+      </div>
+
+      <div class="group">
+        <details class="fold">
+          <summary>Delivery posture</summary>
+          <div id="posture"></div>
+        </details>
+      </div>
+
+      <div class="group">
+        <details class="fold">
+          <summary>City profile</summary>
+          <div id="profile-edit"></div>
+          <table class="profile" id="profile-table"></table>
+          <p class="legend-note">
+            <span class="badge data">city data</span> from statistics ·
+            <span class="badge prov">provisional</span> awaiting pilot data
+          </p>
+        </details>
+      </div>
+
+      <div class="group btn-row">
+        <button class="btn primary" id="pin-btn">Pin as reference</button>
+        <button class="btn" id="reset-btn">Reset</button>
+        <button class="btn" id="csv-btn" title="This city's indicators, one row per year">Data</button>
+      </div>
+    </aside>
+
+    <main id="main"></main>
+  </div>
+
+  <footer>
+      Built by <a href="https://mj-lab.mgh.harvard.edu" target="_blank" rel="noopener">MJ Lab</a>
+      @ Harvard, 2025–2026. Awarded by the European Commission —
+    <a href="https://gogreennext.eu" target="_blank" rel="noopener">learn more about the project</a>.
+  </footer>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

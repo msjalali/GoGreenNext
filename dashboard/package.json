@@ -1,0 +1,24 @@
+{
+  "name": "@gogreennext/dashboard",
+  "version": "1.0.0",
+  "description": "Interactive SDEverywhere dashboard for the GoGreenNext NBS scaling model",
+  "main": "src/main.js",
+  "scripts": {
+    "model": "sde generate --outformat js --spec model.spec.json model.mdl",
+    "verify": "node verify.mjs",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "MJ Lab",
+  "license": "MIT",
+  "devDependencies": {
+    "@sdeverywhere/cli": "^0.7.45",
+    "vite": "^8.2.1"
+  },
+  "dependencies": {
+    "@sdeverywhere/runtime": "^0.2.9"
+  },
+  "type": "module"
+}

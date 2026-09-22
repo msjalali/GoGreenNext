@@ -1,0 +1,42 @@
+# Only what the dashboard needs is published: the dashboard itself and the one
+# model it runs on. Earlier model versions, the conceptual diagrams, the version
+# notes and the verification suite stay local.
+#
+# WHEN A NEW MODEL VERSION IS PUBLISHED: change the exception below to name it, so
+# the new one is published and the previous one drops out of the repository.
+NBS_Scaling_*.mdl
+!NBS_Scaling_Quanti_v8.mdl
+*_changes.md
+*_notes.md
+*_evidence.md
+tools/
+dashboard_v4_archive/
+
+# Dependencies and generated output
+node_modules/
+dashboard/build/
+dashboard/dist/
+
+# Vensim: run results, and "save as" artefacts with a broken extension that
+# Vensim itself cannot reopen
+*.vdfx
+*.vdf
+*.2mdl
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Internal material — meeting notes, slides, screenshots — is excluded by default.
+# To publish one deliberately:  git add -f <file>
+*.pdf
+*.png
+*.PNG
+
+# OS and editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+.vscode/
+.idea/

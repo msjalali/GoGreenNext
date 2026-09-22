@@ -1,0 +1,67 @@
+# Build the dashboard and publish it to GitHub Pages on every push to main.
+#
+# The model is compiled from NBS_Scaling_Quanti_v8.mdl at build time and checked
+# against the Python reference before anything is published, so a model that no
+# longer reproduces the reference results cannot reach the public site.
+
+name: Deploy dashboard
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# one deployment at a time; a newer push supersedes one still in progress
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Compile the Vensim model to JavaScript
+        run: npm run model
+        working-directory: dashboard
+
+      - name: Check the compiled model against the reference results
+        run: npm run verify
+        working-directory: dashboard
+
+      - name: Build the dashboard
+        run: npm run build
+        working-directory: dashboard
+
+      - name: Set up GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload the built dashboard
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dashboard/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
